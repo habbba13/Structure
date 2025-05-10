@@ -1,25 +1,20 @@
 import chromium from 'chrome-aws-lambda';
 import puppeteer from 'puppeteer-core';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST allowed' });
-  }
-
-  let rawBody = '';
-  for await (const chunk of req) {
-    rawBody += chunk;
+    return res.status(405).json({ error: 'Only POST requests are allowed' });
   }
 
   let urls;
   try {
-    urls = JSON.parse(rawBody).urls;
+    const body = await new Promise((resolve, reject) => {
+      let data = '';
+      req.on('data', chunk => (data += chunk));
+      req.on('end', () => resolve(JSON.parse(data)));
+      req.on('error', err => reject(err));
+    });
+    urls = body.urls;
   } catch (err) {
     return res.status(400).json({ error: 'Invalid JSON' });
   }
@@ -29,7 +24,7 @@ export default async function handler(req, res) {
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
-    executablePath: executablePath, // ✅ this line is critical
+    executablePath,
     headless: chromium.headless,
   });
 
