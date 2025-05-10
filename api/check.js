@@ -42,7 +42,7 @@ export default async function handler(req) {
 
     const workingUrls = results.filter(Boolean);
 
-    return new Response(JSON.stringify({ workingUrls }), {
+    return new Response(JSON.stringify({ workingUrls: flattened }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
