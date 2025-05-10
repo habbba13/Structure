@@ -8,10 +8,7 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST requests allowed' });
-  }
-
+  // Parse JSON manually (Vercel requires this)
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(chunk);
@@ -21,9 +18,10 @@ export default async function handler(req, res) {
   try {
     urls = JSON.parse(rawBody).urls;
   } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+    return res.status(400).json({ error: 'Invalid JSON' });
   }
 
+  // 👇 THIS LINE IS CRITICAL – use chrome-aws-lambda's path only
   const executablePath = await chromium.executablePath;
 
   const browser = await puppeteer.launch({
@@ -34,11 +32,15 @@ export default async function handler(req, res) {
   });
 
   const page = await browser.newPage();
+
   let workingUrl = null;
 
   for (const url of urls) {
     try {
-      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 8000 });
+      const response = await page.goto(url, {
+        waitUntil: 'domcontentloaded',
+        timeout: 8000,
+      });
       if (response.status() === 200) {
         workingUrl = url;
         break;
@@ -47,5 +49,5 @@ export default async function handler(req, res) {
   }
 
   await browser.close();
-  return res.status(200).json({ workingUrl });
+  res.status(200).json({ workingUrl });
 }
