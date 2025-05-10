@@ -2,7 +2,7 @@
   "functions": {
     "api/check.js": {
       "memory": 1024,
-      "maxDuration": 30,
+      "maxDuration": 10,
       "includeFiles": "node_modules/chrome-aws-lambda/**"
     }
   }
