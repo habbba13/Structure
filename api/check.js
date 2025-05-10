@@ -1,5 +1,5 @@
-import edgechromium from 'chrome-aws-lambda';
-import puppeteer from 'puppeteer-core';
+import chromium from "chrome-aws-lambda";
+import { IncomingMessage, ServerResponse } from "http";
 
 export const config = {
   api: {
@@ -7,7 +7,7 @@ export const config = {
   },
 };
 
-export default async function handler(req, res) {
+export default async function handler(req = IncomingMessage, res = ServerResponse) {
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(chunk);
@@ -17,26 +17,33 @@ export default async function handler(req, res) {
   let urls;
   try {
     urls = JSON.parse(rawBody).urls;
+    if (!Array.isArray(urls)) throw new Error();
   } catch {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+    return res.writeHead(400, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "Invalid JSON body" }));
   }
 
   const executablePath = await chromium.executablePath;
 
-  const browser = await puppeteer.launch({
-    args: chromium.args,
+  const browser = await chromium.puppeteer.launch({
+    args: [
+      ...chromium.args,
+      "--disable-setuid-sandbox",
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--single-process",
+    ],
     executablePath,
-    headless: chromium.headless,
+    headless: true,
   });
 
   const page = await browser.newPage();
 
   await page.setUserAgent(
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
   );
-
   await page.setExtraHTTPHeaders({
-    'Accept-Language': 'en-US,en;q=0.9',
+    "Accept-Language": "en-US,en;q=0.9",
   });
 
   let workingUrl = null;
@@ -44,19 +51,23 @@ export default async function handler(req, res) {
   for (const url of urls) {
     try {
       const response = await page.goto(url, {
-        waitUntil: 'networkidle2',
+        waitUntil: "networkidle2",
         timeout: 10000,
       });
 
-      await page.waitForTimeout(3000); // Give Cloudflare time
+      await page.waitForTimeout(3000);
 
       if (response.status() === 200) {
         workingUrl = url;
         break;
       }
-    } catch (_) {}
+    } catch (err) {
+      console.log(`Error checking ${url}:`, err.message);
+    }
   }
 
   await browser.close();
-  return res.status(200).json({ workingUrl });
+
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ workingUrl }));
 }
