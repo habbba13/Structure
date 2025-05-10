@@ -2,7 +2,6 @@ import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
 
 export const config = {
-  runtime: 'edge', // Optional: can also leave this out
 };
 
 export default async function handler(req, res) {
