@@ -1,10 +1,11 @@
 {
   "type": "module",
   "engines": {
-    "node": "14.x"
+    "node": "22.x"
   },
   "dependencies": {
-    "chrome-aws-lambda": "6.0.0",
-    "puppeteer-core": "6.0.0"
+    "chrome-aws-lambda": "^10.1.0",
+    "puppeteer-core": "^10.1.0"
   }
 }
+
