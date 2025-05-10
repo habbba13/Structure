@@ -1,13 +1,11 @@
-import chromium from "chrome-aws-lambda";
-import { IncomingMessage, ServerResponse } from "http";
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
 
 export const config = {
-  api: {
-    bodyParser: false,
-  },
+  runtime: 'edge', // Optional: can also leave this out
 };
 
-export default async function handler(req = IncomingMessage, res = ServerResponse) {
+export default async function handler(req, res) {
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(chunk);
@@ -19,31 +17,22 @@ export default async function handler(req = IncomingMessage, res = ServerRespons
     urls = JSON.parse(rawBody).urls;
     if (!Array.isArray(urls)) throw new Error();
   } catch {
-    return res.writeHead(400, { "Content-Type": "application/json" }).end(JSON.stringify({ error: "Invalid JSON body" }));
+    return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
-  const executablePath = await chromium.executablePath;
-
-  const browser = await chromium.puppeteer.launch({
-    args: [
-      ...chromium.args,
-      "--disable-setuid-sandbox",
-      "--no-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--single-process",
-    ],
-    executablePath,
-    headless: true,
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
   });
 
   const page = await browser.newPage();
-
   await page.setUserAgent(
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
   );
+
   await page.setExtraHTTPHeaders({
-    "Accept-Language": "en-US,en;q=0.9",
+    'Accept-Language': 'en-US,en;q=0.9',
   });
 
   let workingUrl = null;
@@ -51,8 +40,8 @@ export default async function handler(req = IncomingMessage, res = ServerRespons
   for (const url of urls) {
     try {
       const response = await page.goto(url, {
-        waitUntil: "networkidle2",
-        timeout: 10000,
+        waitUntil: 'networkidle2',
+        timeout: 15000,
       });
 
       await page.waitForTimeout(3000);
@@ -61,13 +50,9 @@ export default async function handler(req = IncomingMessage, res = ServerRespons
         workingUrl = url;
         break;
       }
-    } catch (err) {
-      console.log(`Error checking ${url}:`, err.message);
-    }
+    } catch (_) {}
   }
 
   await browser.close();
-
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ workingUrl }));
+  return res.status(200).json({ workingUrl });
 }
