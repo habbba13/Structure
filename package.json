@@ -1,0 +1,11 @@
+{
+  "name": "puppeteer-vercel-api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "puppeteer": "^22.8.2"
+  }
+}
