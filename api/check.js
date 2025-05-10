@@ -1,37 +1,36 @@
-import puppeteer from 'puppeteer';
+import chromium from 'chrome-aws-lambda';
+import puppeteer from 'puppeteer-core';
 
 export const config = {
   api: {
-    bodyParser: false, // disable automatic body parsing
+    bodyParser: false,
   },
 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Only POST allowed' });
   }
 
-  // Manually parse raw JSON body
-  let body = '';
+  let rawBody = '';
   for await (const chunk of req) {
-    body += chunk;
+    rawBody += chunk;
   }
 
   let urls;
   try {
-    const parsed = JSON.parse(body);
-    urls = parsed.urls;
+    urls = JSON.parse(rawBody).urls;
   } catch (err) {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+    return res.status(400).json({ error: 'Invalid JSON' });
   }
 
-  if (!Array.isArray(urls)) {
-    return res.status(400).json({ error: 'Expected an array of URLs' });
-  }
+  const executablePath = await chromium.executablePath;
 
   const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath,
+    headless: chromium.headless,
   });
 
   const page = await browser.newPage();
@@ -44,12 +43,9 @@ export default async function handler(req, res) {
         workingUrl = url;
         break;
       }
-    } catch (err) {
-      continue;
-    }
+    } catch (_) {}
   }
 
   await browser.close();
-
-  return res.status(200).json({ workingUrl });
+  res.status(200).json({ workingUrl });
 }
