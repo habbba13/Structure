@@ -1,7 +1,8 @@
 import puppeteer from 'puppeteer';
 
 export default async function handler(req, res) {
-  const urls = req.body.urls;
+  const body = req.method === 'POST' ? JSON.parse(await req.text()) : {};
+  const urls = body.urls;
 
   if (!Array.isArray(urls)) {
     return res.status(400).json({ error: 'Invalid request. Expected "urls" array.' });
