@@ -22,36 +22,31 @@ export default async function handler(req) {
       }
     };
 
-    const rotateHosts = ['n1', 'n2', 'n3', 'n4'];
+    // Use just the first input URL and rotate its host
+    const baseUrl = urls[0];
+    const urlParts = baseUrl.split('.coomer.su');
+    let workingUrl = null;
 
-    // Loop through input URLs
-    const results = await Promise.all(
-      urls.map(async (baseUrl) => {
-        const urlParts = baseUrl.split('.coomer.su');
-        if (urlParts.length < 2) return null;
-
-        for (const host of rotateHosts) {
-          const testUrl = `https://${host}.coomer.su${urlParts[1]}`;
-          const valid = await checkUrl(testUrl);
-          if (valid) return valid;
+    if (urlParts.length === 2) {
+      for (const host of ['n1', 'n2', 'n3', 'n4']) {
+        const testUrl = `https://${host}.coomer.su${urlParts[1]}`;
+        const valid = await checkUrl(testUrl);
+        if (valid) {
+          workingUrl = valid;
+          break;
         }
+      }
+    }
 
-        return null;
-      })
-    );
-
-    const workingUrls = results.filter(Boolean);
-
-    return new Response(JSON.stringify({ workingUrls: flattened }), {
+    return new Response(JSON.stringify({ workingUrl }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error(err); // Helpful for debugging
+    console.error(err);
     return new Response(JSON.stringify({ error: 'Unexpected server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 }
-
