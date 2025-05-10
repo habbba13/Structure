@@ -28,7 +28,7 @@ export default async function handler(req, res) {
 
   const browser = await puppeteer.launch({
     args: chromium.args,
-    executablePath: executablePath || '/usr/bin/chromium-browser',
+    executablePath, // ✅ don't force fallback
     headless: chromium.headless,
     defaultViewport: chromium.defaultViewport,
   });
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
         break;
       }
     } catch (err) {
-      // Ignore errors and try next URL
+      // ignore and try next
     }
   }
 
