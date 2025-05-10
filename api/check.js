@@ -24,6 +24,7 @@ export default async function handler(req) {
 
     const rotateHosts = ['n1', 'n2', 'n3', 'n4'];
 
+    // Loop through input URLs
     const results = await Promise.all(
       urls.map(async (baseUrl) => {
         const urlParts = baseUrl.split('.coomer.su');
@@ -39,15 +40,18 @@ export default async function handler(req) {
       })
     );
 
-    const flattened = results.filter(Boolean);
-    return new Response(JSON.stringify({ workingUrls: flattened }), {
+    const workingUrls = results.filter(Boolean);
+
+    return new Response(JSON.stringify({ workingUrls }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
+    console.error(err); // Helpful for debugging
     return new Response(JSON.stringify({ error: 'Unexpected server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
 }
+
