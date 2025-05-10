@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
-  const executablePath = await chromium.executablePath || '/usr/bin/chromium-browser';
+  const executablePath = await chromium.executablePath;
 
   const browser = await puppeteer.launch({
     args: chromium.args,
