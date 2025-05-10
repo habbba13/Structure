@@ -1,4 +1,4 @@
-import chromium from 'chrome-aws-lambda';
+import edgechromium from 'chrome-aws-lambda';
 import puppeteer from 'puppeteer-core';
 
 export const config = {
