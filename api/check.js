@@ -1,31 +1,36 @@
 import chromium from 'chrome-aws-lambda';
 import puppeteer from 'puppeteer-core';
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST requests are allowed' });
+    return res.status(405).json({ error: 'Only POST requests allowed' });
+  }
+
+  let rawBody = '';
+  for await (const chunk of req) {
+    rawBody += chunk;
   }
 
   let urls;
   try {
-    const body = await new Promise((resolve, reject) => {
-      let data = '';
-      req.on('data', chunk => (data += chunk));
-      req.on('end', () => resolve(JSON.parse(data)));
-      req.on('error', err => reject(err));
-    });
-    urls = body.urls;
-  } catch (err) {
-    return res.status(400).json({ error: 'Invalid JSON' });
+    urls = JSON.parse(rawBody).urls;
+  } catch {
+    return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
   const executablePath = await chromium.executablePath;
 
   const browser = await puppeteer.launch({
     args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath,
+    executablePath: executablePath || '/usr/bin/chromium-browser',
     headless: chromium.headless,
+    defaultViewport: chromium.defaultViewport,
   });
 
   const page = await browser.newPage();
@@ -33,12 +38,18 @@ export default async function handler(req, res) {
 
   for (const url of urls) {
     try {
-      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 8000 });
+      const response = await page.goto(url, {
+        waitUntil: 'domcontentloaded',
+        timeout: 8000,
+      });
+
       if (response.status() === 200) {
         workingUrl = url;
         break;
       }
-    } catch (_) {}
+    } catch (err) {
+      // Ignore errors and try next URL
+    }
   }
 
   await browser.close();
