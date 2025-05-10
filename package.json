@@ -1,11 +1,10 @@
 {
   "type": "module",
   "engines": {
-    "node": "22.x"
+    "node": "20.x"
   },
   "dependencies": {
-    "chrome-aws-lambda": "^10.1.0",
-    "puppeteer-core": "^10.1.0"
+    "@sparticuz/chromium": "^119.0.0",
+    "puppeteer-core": "^22.0.0"
   }
 }
-
