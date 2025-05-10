@@ -12,11 +12,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Only POST requests allowed' });
   }
 
-  let rawBody = '';
+  const chunks = [];
   for await (const chunk of req) {
-    rawBody += chunk;
+    chunks.push(chunk);
   }
-
+  const rawBody = Buffer.concat(chunks).toString();
   let urls;
   try {
     urls = JSON.parse(rawBody).urls;
@@ -24,11 +24,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
-  const executablePath = await chromium.executablePath;
+  const executablePath = await chromium.executablePath || '/usr/bin/chromium-browser';
 
   const browser = await puppeteer.launch({
     args: chromium.args,
-    executablePath, // ✅ don't force fallback
+    executablePath,
     headless: chromium.headless,
     defaultViewport: chromium.defaultViewport,
   });
@@ -38,20 +38,14 @@ export default async function handler(req, res) {
 
   for (const url of urls) {
     try {
-      const response = await page.goto(url, {
-        waitUntil: 'domcontentloaded',
-        timeout: 8000,
-      });
-
+      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 8000 });
       if (response.status() === 200) {
         workingUrl = url;
         break;
       }
-    } catch (err) {
-      // ignore and try next
-    }
+    } catch (_) {}
   }
 
   await browser.close();
-  res.status(200).json({ workingUrl });
+  return res.status(200).json({ workingUrl });
 }
