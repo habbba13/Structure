@@ -3,31 +3,50 @@ export const config = {
 };
 
 export default async function handler(req) {
-  const { urls } = await req.json();
+  try {
+    const { urls } = await req.json();
 
-  const checkUrl = async (url) => {
-    try {
-      const res = await fetch(url, { method: 'HEAD' });
-      return res.ok ? url : null;
-    } catch (err) {
-      return null;
+    if (!Array.isArray(urls) || urls.length === 0) {
+      return new Response(JSON.stringify({ error: 'Invalid or empty "urls" array' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
-  };
 
-  const results = await Promise.all(
-    urls.map(async (originalUrl) => {
-      // Try rotating n1–n4
-      for (let i = 1; i <= 4; i++) {
-        const testUrl = originalUrl.replace(/n\d/, `n${i}`);
-        const valid = await checkUrl(testUrl);
-        if (valid) return valid;
+    const checkUrl = async (url) => {
+      try {
+        const res = await fetch(url, { method: 'HEAD' });
+        return res.ok ? url : null;
+      } catch {
+        return null;
       }
-      return null;
-    })
-  );
+    };
 
-  return new Response(JSON.stringify({ workingUrls: results }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+    const rotateHosts = ['n1', 'n2', 'n3', 'n4'];
+
+    const results = await Promise.all(
+      urls.map(async (baseUrl) => {
+        const urlParts = baseUrl.split('.coomer.su');
+        if (urlParts.length < 2) return null;
+
+        for (const host of rotateHosts) {
+          const testUrl = `https://${host}.coomer.su${urlParts[1]}`;
+          const valid = await checkUrl(testUrl);
+          if (valid) return valid;
+        }
+
+        return null;
+      })
+    );
+
+    return new Response(JSON.stringify({ workingUrls: results }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'Unexpected server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 }
