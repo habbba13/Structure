@@ -8,10 +8,6 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST requests allowed' });
-  }
-
   const chunks = [];
   for await (const chunk of req) {
     chunks.push(chunk);
@@ -25,21 +21,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
+  // 👇 DO NOT ADD ANY FALLBACK HERE
   const executablePath = await chromium.executablePath;
 
   const browser = await puppeteer.launch({
     args: chromium.args,
-    executablePath,
+    executablePath, // this is enough
     headless: chromium.headless,
     defaultViewport: chromium.defaultViewport,
   });
 
   const page = await browser.newPage();
-
-  // ✅ Spoof real browser headers
   await page.setUserAgent(
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
   );
+
   await page.setExtraHTTPHeaders({
     'Accept-Language': 'en-US,en;q=0.9',
   });
@@ -48,5 +44,21 @@ export default async function handler(req, res) {
 
   for (const url of urls) {
     try {
-      console.log("Checking URL:", url);
-      const response = await page.goto(url
+      const response = await page.goto(url, {
+        waitUntil: 'networkidle2',
+        timeout: 8000,
+      });
+
+      await page.waitForTimeout(2000);
+
+      if (response.status() === 200) {
+        workingUrl = url;
+        break;
+      }
+    } catch (_) {}
+  }
+
+  await browser.close();
+  res.status(200).json({ workingUrl });
+}
+
