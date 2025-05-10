@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
-    executablePath,
+    executablePath: executablePath, // ✅ this line is critical
     headless: chromium.headless,
   });
 
